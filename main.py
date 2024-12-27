@@ -28,14 +28,21 @@ def backup_database():
     backup_file = os.path.join(BACKUP_DIR, f"db_backup_{timestamp}.sql")
 
     try:
-        # Run pg_dump in the Docker container
+        # Add PGPASSWORD environment variable
+        env = os.environ.copy()
+        env["PGPASSWORD"] = os.getenv("DB_PASSWORD")  # Add this to your .env file
+        
         subprocess.run(
             [
                 "docker", "exec", DB_CONTAINER_NAME, 
-                "pg_dump", "-U", DB_USER, DB_NAME
+                "pg_dump", 
+                "-U", DB_USER,
+                "-h", "localhost",  # Add explicit host
+                DB_NAME
             ],
             stdout=open(backup_file, "w"),
-            check=True
+            check=True,
+            env=env
         )
         print(f"Database backup successful: {backup_file}")
         return backup_file
