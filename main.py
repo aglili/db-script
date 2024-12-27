@@ -37,7 +37,7 @@ def backup_database():
                 "docker", "exec", DB_CONTAINER_NAME, 
                 "pg_dump", 
                 "-U", DB_USER,
-                "-h", "0.0.0.0", 
+                "-h", "localhost", 
                 "-p", "5433", # Add explicit host
                 DB_NAME
             ],
