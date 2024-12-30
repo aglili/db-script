@@ -46,17 +46,11 @@ def backup_database():
     backup_file = os.path.join(BACKUP_DIR, f"db_backup_{timestamp}.sql")
 
     try:
-        # Create a clean environment with only necessary variables
-        env = {
-            "PATH": os.environ.get("PATH", ""),
-            "PGPASSWORD": DB_PASSWORD
-        }
-        
-        # Ensure all environment variables are strings
-        env = {k: str(v) for k, v in env.items() if v is not None}
-        
+        # Create the docker exec command with environment variable
         cmd = [
-            "docker", "exec", DB_CONTAINER_NAME,
+            "docker", "exec",
+            "-e", f"PGPASSWORD={DB_PASSWORD}",  # Pass password as environment variable
+            DB_CONTAINER_NAME,
             "pg_dump",
             "-U", DB_USER,
             "-h", "postgres",
@@ -70,8 +64,7 @@ def backup_database():
             subprocess.run(
                 cmd,
                 stdout=output_file,
-                check=True,
-                env=env
+                check=True
             )
         
         print(f"Database backup successful: {backup_file}")
@@ -83,7 +76,6 @@ def backup_database():
         print(f"Unexpected error during backup: {str(e)}")
         return None
 
-# Rest of your code remains the same...
 
 def upload_to_supabase(file_path):
     """Upload the backup file to Supabase Storage."""
