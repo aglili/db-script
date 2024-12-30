@@ -15,7 +15,8 @@ required_env_vars = {
     "SUPABASE_URL": os.getenv("SUPABASE_URL"),
     "SUPABASE_KEY": os.getenv("SUPABASE_KEY"),
     "SUPABASE_BUCKET": os.getenv("SUPABASE_BUCKET"),
-    "BACKUP_DIR": os.getenv("BACKUP_DIR", "backups")  # Provide default value
+    "BACKUP_DIR": os.getenv("BACKUP_DIR", "backups"),
+    "DB_PASSWORD": os.getenv("DB_PASSWORD")
 }
 
 # Check for missing environment variables
@@ -31,6 +32,7 @@ SUPABASE_URL = required_env_vars["SUPABASE_URL"]
 SUPABASE_KEY = required_env_vars["SUPABASE_KEY"]
 SUPABASE_BUCKET = required_env_vars["SUPABASE_BUCKET"]
 BACKUP_DIR = required_env_vars["BACKUP_DIR"]
+DB_PASSWORD = required_env_vars["DB_PASSWORD"]
 
 # Ensure the backup directory exists
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -47,6 +49,7 @@ def backup_database():
         # Create a clean environment with only necessary variables
         env = {
             "PATH": os.environ.get("PATH", ""),
+            "PGPASSWORD": DB_PASSWORD
         }
         
         # Ensure all environment variables are strings
