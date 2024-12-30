@@ -82,15 +82,18 @@ def upload_to_supabase(file_path):
     file_name = os.path.basename(file_path)
 
     try:
+        print(f"Attempting to upload file: {file_name}")
         with open(file_path, "rb") as file_data:
             response = supabase.storage.from_(SUPABASE_BUCKET).upload(file_name, file_data)
+            
+        # The response is an UploadResponse object, not a dictionary
+        print(f"Upload response: {response}")
+        print(f"File uploaded successfully to: {SUPABASE_BUCKET}/{file_name}")
 
-        if response.get("error"):
-            print(f"Error uploading to Supabase: {response['error']}")
-        else:
-            print(f"File uploaded to Supabase: {SUPABASE_BUCKET}/{file_name}")
     except Exception as e:
         print(f"Error uploading to Supabase: {e}")
+        if hasattr(e, 'message'):
+            print(f"Error message: {e.message}")
 
 def cleanup_old_backups(days=7):
     """Delete local backup files older than 'days' days."""
