@@ -7,14 +7,32 @@ from supabase import create_client, Client
 # Load environment variables
 load_dotenv()
 
-# Constants from .env
-DB_CONTAINER_NAME = os.getenv("DB_CONTAINER_NAME")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET")
-BACKUP_DIR = os.getenv("BACKUP_DIR")
+# Constants from .env with error checking
+required_env_vars = {
+    "DB_CONTAINER_NAME": os.getenv("DB_CONTAINER_NAME"),
+    "DB_NAME": os.getenv("DB_NAME"),
+    "DB_USER": os.getenv("DB_USER"),
+    "DB_PASSWORD": os.getenv("DB_PASSWORD"),
+    "SUPABASE_URL": os.getenv("SUPABASE_URL"),
+    "SUPABASE_KEY": os.getenv("SUPABASE_KEY"),
+    "SUPABASE_BUCKET": os.getenv("SUPABASE_BUCKET"),
+    "BACKUP_DIR": os.getenv("BACKUP_DIR", "backups")  # Provide default value
+}
+
+# Check for missing environment variables
+missing_vars = [var for var, value in required_env_vars.items() if value is None]
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+# Use the validated environment variables
+DB_CONTAINER_NAME = required_env_vars["DB_CONTAINER_NAME"]
+DB_NAME = required_env_vars["DB_NAME"]
+DB_USER = required_env_vars["DB_USER"]
+DB_PASSWORD = required_env_vars["DB_PASSWORD"]
+SUPABASE_URL = required_env_vars["SUPABASE_URL"]
+SUPABASE_KEY = required_env_vars["SUPABASE_KEY"]
+SUPABASE_BUCKET = required_env_vars["SUPABASE_BUCKET"]
+BACKUP_DIR = required_env_vars["BACKUP_DIR"]
 
 # Ensure the backup directory exists
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -28,28 +46,44 @@ def backup_database():
     backup_file = os.path.join(BACKUP_DIR, f"db_backup_{timestamp}.sql")
 
     try:
-        # Add PGPASSWORD environment variable
-        env = os.environ.copy()
-        env["PGPASSWORD"] = os.getenv("DB_PASSWORD")  # Add this to your .env file
+        # Create a clean environment with only necessary variables
+        env = {
+            "PATH": os.environ.get("PATH", ""),
+            "PGPASSWORD": DB_PASSWORD
+        }
         
-        subprocess.run(
-            [
-                "docker", "exec", DB_CONTAINER_NAME, 
-                "pg_dump", 
-                "-U", DB_USER,
-                "-h", "localhost", 
-                "-p", "5433", # Add explicit host
-                DB_NAME
-            ],
-            stdout=open(backup_file, "w"),
-            check=True,
-            env=env
-        )
+        # Ensure all environment variables are strings
+        env = {k: str(v) for k, v in env.items() if v is not None}
+        
+        cmd = [
+            "docker", "exec", DB_CONTAINER_NAME,
+            "pg_dump",
+            "-U", DB_USER,
+            "-h", "localhost",
+            "-p", "5433",
+            DB_NAME
+        ]
+        
+        print(f"Executing command: {' '.join(cmd)}")
+        
+        with open(backup_file, "w") as output_file:
+            subprocess.run(
+                cmd,
+                stdout=output_file,
+                check=True,
+                env=env
+            )
+        
         print(f"Database backup successful: {backup_file}")
         return backup_file
     except subprocess.CalledProcessError as e:
         print(f"Error during database backup: {e}")
         return None
+    except Exception as e:
+        print(f"Unexpected error during backup: {str(e)}")
+        return None
+
+# Rest of your code remains the same...
 
 def upload_to_supabase(file_path):
     """Upload the backup file to Supabase Storage."""
