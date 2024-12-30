@@ -1,10 +1,21 @@
 import os
 import subprocess
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Load environment variables
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('database_backup.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 # Constants from .env with error checking
@@ -46,10 +57,9 @@ def backup_database():
     backup_file = os.path.join(BACKUP_DIR, f"db_backup_{timestamp}.sql")
 
     try:
-        # Create the docker exec command with environment variable
         cmd = [
             "docker", "exec",
-            "-e", f"PGPASSWORD={DB_PASSWORD}",  # Pass password as environment variable
+            "-e", f"PGPASSWORD={DB_PASSWORD}",
             DB_CONTAINER_NAME,
             "pg_dump",
             "-U", DB_USER,
@@ -58,8 +68,7 @@ def backup_database():
             DB_NAME
         ]
         
-        print(f"Executing command: {' '.join(cmd)}")
-        
+        logger.info(f"Starting database backup")
         with open(backup_file, "w") as output_file:
             subprocess.run(
                 cmd,
@@ -67,33 +76,30 @@ def backup_database():
                 check=True
             )
         
-        print(f"Database backup successful: {backup_file}")
+        logger.info(f"Database backup successful: {backup_file}")
         return backup_file
     except subprocess.CalledProcessError as e:
-        print(f"Error during database backup: {e}")
+        logger.error(f"Error during database backup: {e}")
         return None
     except Exception as e:
-        print(f"Unexpected error during backup: {str(e)}")
+        logger.error(f"Unexpected error during backup: {str(e)}")
         return None
-
 
 def upload_to_supabase(file_path):
     """Upload the backup file to Supabase Storage."""
     file_name = os.path.basename(file_path)
 
     try:
-        print(f"Attempting to upload file: {file_name}")
+        logger.info(f"Starting upload of file: {file_name}")
         with open(file_path, "rb") as file_data:
             response = supabase.storage.from_(SUPABASE_BUCKET).upload(file_name, file_data)
             
-        # The response is an UploadResponse object, not a dictionary
-        print(f"Upload response: {response}")
-        print(f"File uploaded successfully to: {SUPABASE_BUCKET}/{file_name}")
+        logger.info(f"File uploaded successfully to: {SUPABASE_BUCKET}/{file_name}")
 
     except Exception as e:
-        print(f"Error uploading to Supabase: {e}")
+        logger.error(f"Error uploading to Supabase: {e}")
         if hasattr(e, 'message'):
-            print(f"Error message: {e.message}")
+            logger.error(f"Error message: {e.message}")
 
 def cleanup_old_backups(days=7):
     """Delete local backup files older than 'days' days."""
@@ -104,10 +110,12 @@ def cleanup_old_backups(days=7):
             file_age = (now - datetime.fromtimestamp(os.path.getmtime(file_path))).days
             if file_age > days:
                 os.remove(file_path)
-                print(f"Deleted old backup: {file_path}")
+                logger.info(f"Deleted old backup: {file_path}")
 
 if __name__ == "__main__":
+    logger.info("Starting backup process")
     backup_file = backup_database()
     if backup_file:
         upload_to_supabase(backup_file)
         cleanup_old_backups(days=7)
+    logger.info("Backup process completed")
