@@ -56,8 +56,8 @@ def backup_database():
             "docker", "exec", DB_CONTAINER_NAME,
             "pg_dump",
             "-U", DB_USER,
-            "-h", "localhost",
-            "-p", "5433",
+            "-h", "postgres",
+            "-p", "5432",
             DB_NAME
         ]
         
