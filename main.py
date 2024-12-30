@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# Constants from .env with error checking
 required_env_vars = {
     "DB_CONTAINER_NAME": os.getenv("DB_CONTAINER_NAME"),
     "DB_NAME": os.getenv("DB_NAME"),
@@ -30,12 +29,11 @@ required_env_vars = {
     "DB_PASSWORD": os.getenv("DB_PASSWORD")
 }
 
-# Check for missing environment variables
+
 missing_vars = [var for var, value in required_env_vars.items() if value is None]
 if missing_vars:
     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
-# Use the validated environment variables
 DB_CONTAINER_NAME = required_env_vars["DB_CONTAINER_NAME"]
 DB_NAME = required_env_vars["DB_NAME"]
 DB_USER = required_env_vars["DB_USER"]
@@ -45,10 +43,9 @@ SUPABASE_BUCKET = required_env_vars["SUPABASE_BUCKET"]
 BACKUP_DIR = required_env_vars["BACKUP_DIR"]
 DB_PASSWORD = required_env_vars["DB_PASSWORD"]
 
-# Ensure the backup directory exists
+
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
-# Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def backup_database():
